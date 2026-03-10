@@ -5,7 +5,7 @@ a = Analysis(
     ['maker.py'],
     pathex=[],
     binaries=[],
-    datas=[('Forest-ttk-theme-master', 'Forest-ttk-theme-master')],
+    datas=[('styles', 'styles')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
