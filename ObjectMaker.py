@@ -5,6 +5,7 @@ import sys
 import requests
 import sys
 import subprocess
+import shutil
 import tkinter as tk
 import customtkinter as ctk
 from calendar import Calendar
@@ -16,7 +17,7 @@ from tkinter import ttk
 from ctypes import windll
 from tkinter import filedialog
 
-VERSION = "1.0.1"
+VERSION = "v1.0.1"
 RELEASE_URL = "https://api.github.com/repos/lYants/News-and-event-maker/releases/latest"
 
 DEFAULT_FONT = ("Sabon", 18)
@@ -55,36 +56,82 @@ CATEGORY_MAPPER = {
     "wegostem": "/images/curricula/logo_wegostem.png",
 }
 
-START_DATE, END_DATE = 0,1
-NEWS_OBJECT, EVENT_OBJECT = "news","event"
+START_DATE, END_DATE = 0, 1
+NEWS_OBJECT, EVENT_OBJECT = "news", "event"
 
 base_path = getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)
 
+
 class WebObject:
     def __init__(self, title, language, anchor, category, date, year, content):
-        self.title, self.language, self.anchor, self.category, self.date, self.year, self.content = title, language, anchor, category, date, year, content
+        (
+            self.title,
+            self.language,
+            self.anchor,
+            self.category,
+            self.date,
+            self.year,
+            self.content,
+        ) = (title, language, anchor, category, date, year, content)
         self.type = "news"
 
     def makeDict(self):
-        return {"title":self.title, "language": self.language, "item_theme_logo_ur": self.category, "anchor": self.anchor, "date": self.date}
+        return {
+            "title": self.title,
+            "language": self.language,
+            "item_theme_logo_ur": self.category,
+            "anchor": self.anchor,
+            "date": self.date,
+        }
+
 
 class Event(WebObject):
-    def __init__(self, title, language, anchor, category, date, enddate, location, loclink, reglink, year, month, content):
+    def __init__(
+        self,
+        title,
+        language,
+        anchor,
+        category,
+        date,
+        enddate,
+        location,
+        loclink,
+        reglink,
+        year,
+        month,
+        content,
+    ):
         super().__init__(title, language, anchor, category, date, year, content)
         self.type = "event"
-        self.endDate, self.location, self.locationLink, self.registrationLink, self.month = enddate, location, loclink, reglink, month
+        (
+            self.endDate,
+            self.location,
+            self.locationLink,
+            self.registrationLink,
+            self.month,
+        ) = (enddate, location, loclink, reglink, month)
 
     def makeDict(self):
         dic = super().makeDict()
-        dic.update({"end_date":self.endDate, "location":self.location, "location_link":self.locationLink, "registration_link":self.registrationLink})
+        dic.update(
+            {
+                "end_date": self.endDate,
+                "location": self.location,
+                "location_link": self.locationLink,
+                "registration_link": self.registrationLink,
+            }
+        )
         return dic
 
 
 class Gui:
     def __init__(self, objectmaker) -> None:
         self.root = tk.Tk()
-        self.root.tk.call('source', os.path.join(base_path,'Forest-ttk-theme-master','forest-light.tcl'))
-        ttk.Style().theme_use('forest-light')
+        self.root.tk.call(
+            "source",
+            os.path.join(base_path, "styles", "forest-light.tcl"),
+        )
+        ttk.Style().theme_use("forest-light")
         self.root.title("Object maker")
         self.root.geometry("1800x775")
         windll.shcore.SetProcessDpiAwareness(1)
@@ -101,7 +148,7 @@ class Gui:
         sep.grid(row=0, column=4, rowspan=12, sticky="ns", padx=20)
 
         s = ttk.Style()
-        s.configure('.', font=('Sabon', 18))
+        s.configure(".", font=("Sabon", 18))
 
         self.maker = objectmaker
         self.makeMenuBar()
@@ -117,8 +164,12 @@ class Gui:
 
     def makeMenuBar(self):
         self.menu = tk.Menu(self.root)
-        self.menu.add_command(label="Select Dwengo-website folder", command=self.getWebsiteDir)
-        self.menu.add_command(label=f"\tcurrent: {self.maker.websiteDir}", state="disabled")
+        self.menu.add_command(
+            label="Select Dwengo-website folder", command=self.getWebsiteDir
+        )
+        self.menu.add_command(
+            label=f"\tcurrent: {self.maker.websiteDir}", state="disabled"
+        )
         self.siteIndex = self.menu.index("end")
         self.root.config(menu=self.menu)
 
@@ -126,13 +177,22 @@ class Gui:
         if self.siteIndex is None:
             return
         self.maker.selectWebsiteDir()
-        self.menu.entryconfig(self.siteIndex,label=f"\tcurrent: {self.maker.websiteDir}")
+        self.menu.entryconfig(
+            self.siteIndex, label=f"\tcurrent: {self.maker.websiteDir}"
+        )
         self.checkWebsiteDir()
 
     def makeBasicComponents(self):
         # Object selection
         self.objectType = tk.StringVar()
-        self.objectBox = ttk.Combobox(self.mainframe, textvariable=self.objectType, values=OBJECT_CHOICES, font=DEFAULT_FONT, state="readonly", width=15)
+        self.objectBox = ttk.Combobox(
+            self.mainframe,
+            textvariable=self.objectType,
+            values=OBJECT_CHOICES,
+            font=DEFAULT_FONT,
+            state="readonly",
+            width=15,
+        )
         self.objectBox.current(0)
         self.objectBox.grid(column=0, row=0, padx=5, pady=5)
         self.objectBox.bind("<<ComboboxSelected>>", self.removeHighlight)
@@ -140,27 +200,48 @@ class Gui:
         self.currentObject = NEWS_OBJECT
 
         # Title input
-        ttk.Label(self.mainframe, text="Title:", font=DEFAULT_FONT).grid(column=0, row=1, sticky="W", padx=5, pady=5)
+        ttk.Label(self.mainframe, text="Title:", font=DEFAULT_FONT).grid(
+            column=0, row=1, sticky="W", padx=5, pady=5
+        )
         self.title = ttk.Entry(self.mainframe, font=DEFAULT_FONT, width=30)
         self.title.grid(column=1, row=1, sticky="ew", padx=5, pady=5, columnspan=2)
 
         # Category selection
-        ttk.Label(self.mainframe, text="Category:", font=DEFAULT_FONT).grid(column=0, row=2, sticky="W", padx=5, pady=5)
+        ttk.Label(self.mainframe, text="Category:", font=DEFAULT_FONT).grid(
+            column=0, row=2, sticky="W", padx=5, pady=5
+        )
         self.category = tk.StringVar()
-        box = ttk.Combobox(self.mainframe, textvariable=self.category, values=CATEGORIES, font=DEFAULT_FONT, state="readonly")
+        box = ttk.Combobox(
+            self.mainframe,
+            textvariable=self.category,
+            values=CATEGORIES,
+            font=DEFAULT_FONT,
+            state="readonly",
+        )
         box.grid(column=1, row=2, padx=5, pady=5, columnspan=2, sticky="eW")
         box.bind("<<ComboboxSelected>>", self.removeHighlight)
 
         # Language selection
-        ttk.Label(self.mainframe, text=f"Language:", font=DEFAULT_FONT).grid(column=0, row=3, sticky="W", padx=5, pady=5)
+        ttk.Label(self.mainframe, text=f"Language:", font=DEFAULT_FONT).grid(
+            column=0, row=3, sticky="W", padx=5, pady=5
+        )
         self.language = tk.StringVar()
-        languageBox = ttk.Combobox(self.mainframe, textvariable=self.language, values=LANGUAGES, font=DEFAULT_FONT, state="readonly", width=3)
+        languageBox = ttk.Combobox(
+            self.mainframe,
+            textvariable=self.language,
+            values=LANGUAGES,
+            font=DEFAULT_FONT,
+            state="readonly",
+            width=3,
+        )
         languageBox.current(0)
         languageBox.grid(column=1, row=3, padx=5, pady=5, columnspan=2, sticky="W")
         languageBox.bind("<<ComboboxSelected>>", self.removeHighlight)
 
         # Anchor input
-        ttk.Label(self.mainframe, text="Anchor:", font=DEFAULT_FONT).grid(column=0, row=4, sticky="W", padx=5, pady=5)
+        ttk.Label(self.mainframe, text="Anchor:", font=DEFAULT_FONT).grid(
+            column=0, row=4, sticky="W", padx=5, pady=5
+        )
         self.anchor = ttk.Entry(self.mainframe, font=DEFAULT_FONT)
         self.anchor.grid(column=1, row=4, padx=5, pady=5, columnspan=2, sticky="eW")
 
@@ -168,9 +249,9 @@ class Gui:
         self.textEditor = tk.Text(self.mainframe, font=DEFAULT_FONT, undo=True)
         self.textEditor.bind("<Control-z>", lambda event: self.textEditor.edit_undo())
         self.textEditor.bind("<Control-y>", lambda event: self.textEditor.edit_redo())
-        self.textEditor.grid(column=5,row=1,rowspan=11, columnspan=5)
+        self.textEditor.grid(column=5, row=1, rowspan=11, columnspan=5)
         frame = ttk.Frame(self.mainframe)
-        frame.grid(column=5,row=0,columnspan=5,sticky='news',padx=20)
+        frame.grid(column=5, row=0, columnspan=5, sticky="news", padx=20)
         ctk.CTkButton(
             frame,
             text="Bold",
@@ -181,7 +262,7 @@ class Gui:
             corner_radius=10,
             width=15,
             height=10,
-            command=self.makeTextBold
+            command=self.makeTextBold,
         ).pack(side="left")
         ctk.CTkButton(
             frame,
@@ -193,8 +274,8 @@ class Gui:
             corner_radius=10,
             width=15,
             height=10,
-            command=self.makeTextItalic
-        ).pack(side="left",padx=10)
+            command=self.makeTextItalic,
+        ).pack(side="left", padx=10)
         ctk.CTkButton(
             frame,
             text="Insert image",
@@ -205,8 +286,8 @@ class Gui:
             corner_radius=10,
             width=15,
             height=10,
-            command=self.insertImage
-        ).pack(side="left",padx=10)
+            command=self.insertImage,
+        ).pack(side="left", padx=10)
         ctk.CTkButton(
             frame,
             text="Insert weblink",
@@ -217,8 +298,8 @@ class Gui:
             corner_radius=10,
             width=15,
             height=10,
-            command=self.insertLink
-        ).pack(side="left",padx=10)
+            command=self.insertLink,
+        ).pack(side="left", padx=10)
 
     def updateObjectType(self):
         value = self.objectType.get()
@@ -249,50 +330,72 @@ class Gui:
         self.year = date.year
         self.formattedDate = date.strftime("%Y-%m-%dT12:00:00")
 
-        dateEntry = ttk.Label(self.mainframe, text=f"{self.formattedDate}", font=DEFAULT_FONT)
+        dateEntry = ttk.Label(
+            self.mainframe, text=f"{self.formattedDate}", font=DEFAULT_FONT
+        )
         dateEntry.grid(column=1, row=5, sticky="eW", padx=5, pady=5, columnspan=2)
         self.variableComponents.append(dateEntry)
 
         # Make object button
-        makeButton = ttk.Button(self.mainframe, text="make object", command=self.makeNewsObject)
-        makeButton.grid(column=2, row=0, padx=5, pady=5, sticky='e')
+        makeButton = ttk.Button(
+            self.mainframe, text="make object", command=self.makeNewsObject
+        )
+        makeButton.grid(column=2, row=0, padx=5, pady=5, sticky="e")
         self.variableComponents.append(makeButton)
 
     def setEventComponents(self):
         # Start date
-        self.formattedDate = ''
-        startDateLabel = ttk.Label(self.mainframe, text=f"Start date:", font=DEFAULT_FONT)
+        self.formattedDate = ""
+        startDateLabel = ttk.Label(
+            self.mainframe, text=f"Start date:", font=DEFAULT_FONT
+        )
         startDateLabel.grid(column=0, row=5, sticky="W", padx=5, pady=5)
         self.variableComponents.append(startDateLabel)
 
-        startDateButton = ttk.Button(self.mainframe, text="select", command=lambda: self.askDate(START_DATE),width=8)
+        startDateButton = ttk.Button(
+            self.mainframe,
+            text="select",
+            command=lambda: self.askDate(START_DATE),
+            width=8,
+        )
         startDateButton.grid(column=2, row=5, sticky="e", padx=5, pady=5)
         self.variableComponents.append(startDateButton)
 
         # Start time
-        startTimeLabel = ttk.Label(self.mainframe, text="Start time:", font=DEFAULT_FONT)
+        startTimeLabel = ttk.Label(
+            self.mainframe, text="Start time:", font=DEFAULT_FONT
+        )
         startTimeLabel.grid(column=0, row=6, sticky="W", padx=5, pady=5)
         self.variableComponents.append(startTimeLabel)
 
         startTimeFrame = ttk.Frame(self.mainframe)
-        startTimeFrame.grid(row=6,column=1,sticky="W",padx=5,pady=10)
+        startTimeFrame.grid(row=6, column=1, sticky="W", padx=5, pady=10)
         self.variableComponents.append(startTimeFrame)
 
-        self.startTimeH = ttk.Spinbox(startTimeFrame, from_=0, to=23, increment=1, font=DEFAULT_FONT, width=3)
+        self.startTimeH = ttk.Spinbox(
+            startTimeFrame, from_=0, to=23, increment=1, font=DEFAULT_FONT, width=3
+        )
         self.startTimeH.pack(side="left")
 
-        ttk.Label(startTimeFrame, text=":",font=DEFAULT_FONT).pack(side="left")
+        ttk.Label(startTimeFrame, text=":", font=DEFAULT_FONT).pack(side="left")
 
-        self.startTimeM = ttk.Spinbox(startTimeFrame, from_=0, to=45, increment=15, font=DEFAULT_FONT, width=3)
+        self.startTimeM = ttk.Spinbox(
+            startTimeFrame, from_=0, to=45, increment=15, font=DEFAULT_FONT, width=3
+        )
         self.startTimeM.pack(side="right")
 
         # End date
-        self.formattedEndDate = ''
+        self.formattedEndDate = ""
         endDateLabel = ttk.Label(self.mainframe, text=f"Date:", font=DEFAULT_FONT)
         endDateLabel.grid(column=0, row=7, sticky="W", padx=5, pady=5)
         self.variableComponents.append(endDateLabel)
 
-        endDateButton = ttk.Button(self.mainframe, text="select", command=lambda: self.askDate(END_DATE), width=8)
+        endDateButton = ttk.Button(
+            self.mainframe,
+            text="select",
+            command=lambda: self.askDate(END_DATE),
+            width=8,
+        )
         endDateButton.grid(column=2, row=7, sticky="e", padx=5, pady=5)
         self.variableComponents.append(endDateButton)
 
@@ -302,15 +405,19 @@ class Gui:
         self.variableComponents.append(endTimeLabel)
 
         endTimeFrame = ttk.Frame(self.mainframe)
-        endTimeFrame.grid(row=8,column=1,sticky="W",padx=5,pady=10)
+        endTimeFrame.grid(row=8, column=1, sticky="W", padx=5, pady=10)
         self.variableComponents.append(endTimeFrame)
 
-        self.endTimeH = ttk.Spinbox(endTimeFrame, from_=0, to=23, increment=1, font=DEFAULT_FONT, width=3)
+        self.endTimeH = ttk.Spinbox(
+            endTimeFrame, from_=0, to=23, increment=1, font=DEFAULT_FONT, width=3
+        )
         self.endTimeH.pack(side="left")
 
-        ttk.Label(endTimeFrame, text=":",font=DEFAULT_FONT).pack(side="left")
+        ttk.Label(endTimeFrame, text=":", font=DEFAULT_FONT).pack(side="left")
 
-        self.endTimeM = ttk.Spinbox(endTimeFrame, from_=0, to=45, increment=15, font=DEFAULT_FONT, width=3)
+        self.endTimeM = ttk.Spinbox(
+            endTimeFrame, from_=0, to=45, increment=15, font=DEFAULT_FONT, width=3
+        )
         self.endTimeM.pack(side="right")
 
         # Location
@@ -323,25 +430,38 @@ class Gui:
         self.variableComponents.append(self.location)
 
         # Location link
-        locationLinkLabel = ttk.Label(self.mainframe, text="Location link:", font=DEFAULT_FONT)
+        locationLinkLabel = ttk.Label(
+            self.mainframe, text="Location link:", font=DEFAULT_FONT
+        )
         locationLinkLabel.grid(column=0, row=10, sticky="W", padx=5, pady=5)
         self.variableComponents.append(locationLinkLabel)
 
         self.locationLink = ttk.Entry(self.mainframe, font=DEFAULT_FONT)
-        self.locationLink.grid(column=1, row=10, sticky="ew", padx=5, pady=5, columnspan=2)
+        self.locationLink.grid(
+            column=1, row=10, sticky="ew", padx=5, pady=5, columnspan=2
+        )
         self.variableComponents.append(self.locationLink)
 
         # Registration link
-        registrationLabel = ttk.Label(self.mainframe, text="Registration link:", font=DEFAULT_FONT)
+        registrationLabel = ttk.Label(
+            self.mainframe, text="Registration link:", font=DEFAULT_FONT
+        )
         registrationLabel.grid(column=0, row=11, sticky="W", padx=5, pady=5)
         self.variableComponents.append(registrationLabel)
 
-        self.registrationLink = ttk.Entry(self.mainframe,font=DEFAULT_FONT,)
-        self.registrationLink.grid(column=1, row=11, sticky="ew", padx=5, pady=5, columnspan=2)
+        self.registrationLink = ttk.Entry(
+            self.mainframe,
+            font=DEFAULT_FONT,
+        )
+        self.registrationLink.grid(
+            column=1, row=11, sticky="ew", padx=5, pady=5, columnspan=2
+        )
         self.variableComponents.append(self.registrationLink)
 
         # Make object button
-        makeButton = ttk.Button(self.mainframe, text="make object", command=self.makeEventObject)
+        makeButton = ttk.Button(
+            self.mainframe, text="make object", command=self.makeEventObject
+        )
         makeButton.grid(column=2, row=0, padx=5, pady=5, sticky="e")
         self.variableComponents.append(makeButton)
 
@@ -350,9 +470,17 @@ class Gui:
         if category:
             image = CATEGORY_MAPPER[category]
         else:
-            image = ''
+            image = ""
 
-        object = WebObject(title=self.title.get(), date=self.formattedDate, language=self.language.get(), anchor=self.anchor.get(), category=image, year = self.year, content = self.textEditor.get("1.0", "end-1c"))
+        object = WebObject(
+            title=self.title.get(),
+            date=self.formattedDate,
+            language=self.language.get(),
+            anchor=self.anchor.get(),
+            category=image,
+            year=self.year,
+            content=self.textEditor.get("1.0", "end-1c"),
+        )
         self.maker.setObject(object)
         self.askFileName()
 
@@ -361,13 +489,34 @@ class Gui:
         if category:
             image = CATEGORY_MAPPER[self.category.get()]
         else:
-            image = ''
+            image = ""
 
         if not self.month:
             self.month = datetime.now().month
         if not self.year:
             self.year = datetime.now().year
-        object = Event(title=self.title.get(), date=self.formattedDate+"T"+self.startTimeH.get()+":"+self.startTimeM.get(), enddate=self.formattedEndDate +"T"+self.endTimeH.get()+":"+self.endTimeM.get(), language=self.language.get(), anchor=self.anchor.get(), category=image, location=self.location.get(), loclink=self.locationLink.get(), reglink=self.registrationLink.get(), year = self.year, month=self.month, content = self.textEditor.get("1.0", "end-1c"))
+        object = Event(
+            title=self.title.get(),
+            date=self.formattedDate
+            + "T"
+            + self.startTimeH.get()
+            + ":"
+            + self.startTimeM.get(),
+            enddate=self.formattedEndDate
+            + "T"
+            + self.endTimeH.get()
+            + ":"
+            + self.endTimeM.get(),
+            language=self.language.get(),
+            anchor=self.anchor.get(),
+            category=image,
+            location=self.location.get(),
+            loclink=self.locationLink.get(),
+            reglink=self.registrationLink.get(),
+            year=self.year,
+            month=self.month,
+            content=self.textEditor.get("1.0", "end-1c"),
+        )
         self.maker.setObject(object)
         self.askFileName()
 
@@ -377,16 +526,27 @@ class Gui:
 
         root = tk.Toplevel()
 
-        ttk.Label(root, text="Filename:", font=DEFAULT_FONT).grid(column=0, row=0, sticky="W", padx=5, pady=5)
+        ttk.Label(root, text="Filename:", font=DEFAULT_FONT).grid(
+            column=0, row=0, sticky="W", padx=5, pady=5
+        )
         filename = ttk.Entry(root, font=DEFAULT_FONT)
         filename.grid(column=1, row=0, sticky="ew", padx=5, pady=5)
 
-        ttk.Button(root, text="make file", command=lambda : self.getFilenameAndMakeFile(filename.get())).grid(column=2, row=0, padx=5, pady=5, sticky='e')
+        ttk.Button(
+            root,
+            text="make file",
+            command=lambda: self.getFilenameAndMakeFile(filename.get()),
+        ).grid(column=2, row=0, padx=5, pady=5, sticky="e")
         root.mainloop()
 
     def checkWebsiteDir(self):
         if self.maker.websiteDir is None:
-            self.warning = tk.Label(self.mainframe, text="No dwengo-website folder selected!", font=("Sabon", 15), fg="red")
+            self.warning = tk.Label(
+                self.mainframe,
+                text="No dwengo-website folder selected!",
+                font=("Sabon", 15),
+                fg="red",
+            )
             self.warning.grid(column=0, row=12, sticky="W", padx=5, pady=5)
         else:
             if self.warning:
@@ -401,10 +561,18 @@ class Gui:
         self.calRoot = tk.Tk()
         self.calRoot.geometry("300x300")
         date = datetime.now()
-        self.cal = Calendar(self.calRoot, selectmode="day", year=date.year, month=date.month, day=date.day)
+        self.cal = Calendar(
+            self.calRoot,
+            selectmode="day",
+            year=date.year,
+            month=date.month,
+            day=date.day,
+        )
         self.cal.pack(pady=20)
 
-        ttk.Button(self.calRoot, text="select", command=lambda: self.getDate(type)).pack()
+        ttk.Button(
+            self.calRoot, text="select", command=lambda: self.getDate(type)
+        ).pack()
         self.calRoot.wait_window()
 
     def getDate(self, type):
@@ -413,10 +581,14 @@ class Gui:
             self.month = d.month
             self.year = d.year
             self.formattedDate = d.strftime("%Y-%m-%d")
-            ttk.Label(self.mainframe, text=f"{self.formattedDate}", font=DEFAULT_FONT).grid(column=1, row=5, sticky="W", padx=5, pady=5)
+            ttk.Label(
+                self.mainframe, text=f"{self.formattedDate}", font=DEFAULT_FONT
+            ).grid(column=1, row=5, sticky="W", padx=5, pady=5)
         elif type == END_DATE:
             self.formattedEndDate = d.strftime("%Y-%m-%d")
-            ttk.Label(self.mainframe, text=f"{self.formattedEndDate}", font=DEFAULT_FONT).grid(column=1, row=7, sticky="W", padx=5, pady=5)
+            ttk.Label(
+                self.mainframe, text=f"{self.formattedEndDate}", font=DEFAULT_FONT
+            ).grid(column=1, row=7, sticky="W", padx=5, pady=5)
         self.calRoot.destroy()
 
     def makeTextBold(self):
@@ -455,7 +627,7 @@ class Gui:
         self.textEditor.insert("insert", "![ image_description ]( /images/ )")
 
     def insertLink(self):
-        self.textEditor.insert("insert","[ link_description ]( link )")
+        self.textEditor.insert("insert", "[ link_description ]( link )")
 
     def removeHighlight(self, event):
         event.widget.selection_clear()
@@ -471,24 +643,28 @@ class ObjectMaker:
         if self.websiteDir is None or self.eventDir is None or self.newsDir is None:
             return
 
-        if self.object.type == 'event':
+        if self.object.type == "event":
             if self.object.month >= 9:
-                p = os.path.join(self.eventDir,f"{self.object.year}" + "_najaar", filename + ".md")
+                p = os.path.join(
+                    self.eventDir, f"{self.object.year}" + "_najaar", filename + ".md"
+                )
             else:
-                p = os.path.join(self.eventDir,f"{self.object.year}" + "_voorjaar", filename + ".md")
-        elif self.object.type == 'news':
-            p = os.path.join(self.newsDir,f"{self.object.year}", filename + ".md")
+                p = os.path.join(
+                    self.eventDir, f"{self.object.year}" + "_voorjaar", filename + ".md"
+                )
+        elif self.object.type == "news":
+            p = os.path.join(self.newsDir, f"{self.object.year}", filename + ".md")
 
         preamble = self.object.makeDict()
         preambleYaml = yaml.dump(preamble)
 
         os.makedirs(os.path.dirname(p), exist_ok=True)
-        with open(p, "w", encoding='utf-8') as file:
+        with open(p, "w", encoding="utf-8") as file:
             file.write("---\n" + preambleYaml + "---\n\n" + self.object.content)
         self.saveSettings()
 
     def loadSettings(self):
-        configDir = user_config_dir("ObjectMaker","Dwengo")
+        configDir = user_config_dir("ObjectMaker", "Dwengo")
         os.makedirs(configDir, exist_ok=True)
 
         self.settingsFile = os.path.join(configDir, "settings.json")
@@ -513,7 +689,15 @@ class ObjectMaker:
 
     def saveSettings(self):
         with open(self.settingsFile, "w") as f:
-            json.dump({'websiteDir':self.websiteDir, 'eventDir':self.eventDir, 'newsDir':self.newsDir}, f, indent=4)
+            json.dump(
+                {
+                    "websiteDir": self.websiteDir,
+                    "eventDir": self.eventDir,
+                    "newsDir": self.newsDir,
+                },
+                f,
+                indent=4,
+            )
 
     def setObject(self, object):
         self.object = object
@@ -526,6 +710,7 @@ class ObjectMaker:
             self.newsDir = os.path.join(dir, "_news")
         self.saveSettings()
 
+
 def newVersionAvailable(data):
     latest_version = data["tag_name"]
 
@@ -534,40 +719,51 @@ def newVersionAvailable(data):
         return True
     return False
 
+
 def updateExe(data):
-    download_url = data["assets"][0]["browser_download_url"]
+    try:
+        assets = {a["name"]: a["browser_download_url"] for a in data["assets"]}
 
-    r = requests.get(download_url, stream=True)
-    r.raise_for_status()
+        exe_dir = os.path.dirname(sys.executable)
+        update_dir = os.path.join(exe_dir, "update_temp")
+        os.makedirs(update_dir, exist_ok=True)
 
-    with open("update.exe", "wb") as f:
-        for chunk in r.iter_content(chunk_size=8192):
-            f.write(chunk)
+        for filename, url in assets.items():
+            r = requests.get(url, stream=True)
+            r.raise_for_status()
+            with open(os.path.join(update_dir, filename), "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
+        shutil.move(
+            os.path.join(update_dir, "updater.exe"),
+            os.path.join(exe_dir, "updater.exe")
+        )
+
+    except Exception as e:
+        print(f"Update download mislukt: {e}")
+        return False
+    return True
+
 
 def runUpdater():
+    exe_dir = os.path.dirname(sys.executable)
     current_exe = sys.executable
+    new_exe_path = os.path.join(exe_dir, "update_temp", "objectmaker.exe")
+    updater_path = os.path.join(exe_dir, "updater.exe")
 
-    bat_script = f"""
-        @echo off
-        timeout /t 2 >nul
-        del "{current_exe}"
-        rename update.exe "{os.path.basename(current_exe)}"
-        start "" "{current_exe}"
-        del "%~f0"
-        """
-
-    with open("update.bat", "w") as f:
-        f.write(bat_script)
-
-    subprocess.Popen(["update.bat"], shell=True)
+    subprocess.Popen([updater_path, current_exe, new_exe_path])
     sys.exit()
+
 
 if __name__ == "__main__":
     response = requests.get(RELEASE_URL)
     data = response.json()
     if newVersionAvailable(data):
-        updateExe(data)
-        runUpdater()
+        if updateExe(data):
+            runUpdater()
+        else:
+            print("Update failed, continuing with current version.")
 
     objectmaker = ObjectMaker()
     obj = Gui(objectmaker)
