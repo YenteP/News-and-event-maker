@@ -28,6 +28,7 @@ CATEGORIES = (
     "social robot",
     "stem",
     "wegostem",
+    "dwengo",
 )
 CATEGORY_MAPPER = {
     "agriculture": "/images/curricula/logo_agriculture.png",
@@ -44,6 +45,7 @@ CATEGORY_MAPPER = {
     "social robot": "/images/curricula/logo_socialrobot.png",
     "stem": "/images/curricula/logo_stem.png",
     "wegostem": "/images/curricula/logo_wegostem.png",
+    "dwengo": "/images/curricula/logo_dwengo.png",
 }
 
 START_DATE, END_DATE = 0, 1
@@ -154,9 +156,7 @@ class Gui:
 
     def makeMenuBar(self):
         self.menu = tk.Menu(self.root)
-        self.menu.add_command(
-            label="Select target folder", command=self.getWebsiteDir
-        )
+        self.menu.add_command(label="Select target folder", command=self.getWebsiteDir)
         self.menu.add_command(
             label=f"\tcurrent: {self.maker.websiteDir}", state="disabled"
         )
@@ -508,25 +508,17 @@ class Gui:
         endMinute = self.endTimeM.get()
 
         if len(startHour) == 1:
-            startHour = '0' + startHour
+            startHour = "0" + startHour
         if len(startMinute) == 1:
-            startMinute = '0' + startMinute
+            startMinute = "0" + startMinute
         if len(endHour) == 1:
-            endHour = '0' + endHour
+            endHour = "0" + endHour
         if len(endMinute) == 1:
-            endMinute = '0' + endMinute
+            endMinute = "0" + endMinute
         object = Event(
             title=self.title.get(),
-            date=self.formattedDate
-            + "T"
-            + startHour
-            + ":"
-            + startMinute,
-            enddate=self.formattedEndDate
-            + "T"
-            + endHour
-            + ":"
-            + endMinute,
+            date=self.formattedDate + "T" + startHour + ":" + startMinute,
+            enddate=self.formattedEndDate + "T" + endHour + ":" + endMinute,
             language=self.language.get(),
             anchor=self.anchor.get(),
             category=image,
@@ -650,7 +642,7 @@ class Gui:
         self.textEditor.insert("insert", "[ link_description ]( link )")
 
     def insertBreak(self):
-        self.textEditor.insert("insert","<br>")
+        self.textEditor.insert("insert", "<br>")
 
     def removeHighlight(self, event):
         event.widget.selection_clear()
@@ -670,11 +662,15 @@ class ObjectMaker:
             if os.path.basename(self.websiteDir) == "Dwengo-Website":
                 if self.object.month >= 9:
                     p = os.path.join(
-                        self.eventDir, f"{self.object.year}" + "_najaar", filename + ".md"
+                        self.eventDir,
+                        f"{self.object.year}" + "_najaar",
+                        filename + ".md",
                     )
                 else:
                     p = os.path.join(
-                        self.eventDir, f"{self.object.year}" + "_voorjaar", filename + ".md"
+                        self.eventDir,
+                        f"{self.object.year}" + "_voorjaar",
+                        filename + ".md",
                     )
             else:
                 p = os.path.join(self.eventDir, filename + ".md")
@@ -771,7 +767,7 @@ def updateExe(data):
 
         shutil.move(
             os.path.join(update_dir, "updater.exe"),
-            os.path.join(exe_dir, "updater.exe")
+            os.path.join(exe_dir, "updater.exe"),
         )
 
     except Exception as e:
