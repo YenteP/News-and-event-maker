@@ -7,7 +7,7 @@ from pathlib import Path
 from tkcalendar import Calendar
 from tkinter import ttk, filedialog
 
-VERSION = "v1.0.2"
+VERSION = "v1.0.3"
 RELEASE_URL = "https://api.github.com/repos/YenteP/News-and-event-maker/releases/latest"
 
 DEFAULT_FONT = ("Sabon", 18)
