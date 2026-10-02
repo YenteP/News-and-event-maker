@@ -166,10 +166,10 @@ namespace eval ttk::theme::forest-light {
                 
             }
             null -side right -sticky nsew -children {
-                Spinbox.uparrow -side right -sticky nsew -children {
+                Spinbox.uparrow -side left -sticky nsew -children {
                     Spinbox.symuparrow
                 }
-                Spinbox.downarrow -side left -sticky nsew -children {
+                Spinbox.downarrow -side right -sticky nsew -children {
                     Spinbox.symdownarrow
                 }
             }

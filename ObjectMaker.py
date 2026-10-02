@@ -4,10 +4,11 @@ from calendar import Calendar
 from ctypes import windll
 from datetime import datetime
 from pathlib import Path
+import re
 from tkcalendar import Calendar
 from tkinter import ttk, filedialog
 
-VERSION = "v1.0.6"
+VERSION = "v1.0.7"
 RELEASE_URL = "https://api.github.com/repos/YenteP/News-and-event-maker/releases/latest"
 
 DEFAULT_FONT = ("Sabon", 18)
@@ -253,15 +254,37 @@ class Gui:
         self.anchor = ttk.Entry(self.mainframe, font=DEFAULT_FONT)
         self.anchor.grid(column=1, row=4, padx=5, pady=5, columnspan=2, sticky="eW")
 
-    def makeTextEditor(self):
-        self.textEditor = tk.Text(self.mainframe, font=DEFAULT_FONT, undo=True)
-        default_text = """
+    def formatDutchDate(self, date):
+        weekdays = ("maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag")
+        months = (
+            "januari", "februari", "maart", "april", "mei", "juni",
+            "juli", "augustus", "september", "oktober", "november", "december",
+        )
+        return f"{weekdays[date.weekday()]} {date.day} {months[date.month - 1]} {date.year}, "
+
+    def updateWhenDate(self, date):
+        marker = "**Wanneer:**"
+        index = self.textEditor.search(marker, "1.0", stopindex="end")
+        if not index:
+            return
+        start = f"{index}+{len(marker)}c"
+        line = self.textEditor.get(start, f"{index} lineend")
+        match = re.match(r"[ \t]*\w+ \d{1,2} \w+ \d{4},[ \t]*", line)
+        end = f"{start}+{match.end()}c" if match else start
+        self.textEditor.edit_separator()
+        self.textEditor.delete(start, end)
+        self.textEditor.insert(start, " " + self.formatDutchDate(date))
+        self.textEditor.edit_separator()
+
+    def defaultEventText(self):
+        date_text = self.formatDutchDate(datetime.now())
+        return f"""
 
 **Doelgroep:**
 
-**Wanneer:**
+**Wanneer:** {date_text}
 
-**Locatie:** Het makersatelier van stadsbibliotheek De Krook: Miriam Makebaplein 1, 9000 Gent, gelijkvloers
+**Locatie:** Het maakatelier 'de wondertuin' van stadsbibliotheek De Krook: Miriam Makebaplein 1, 9000 Gent, verdieping -1
 
 **Prijs:** Gratis
 
@@ -269,7 +292,14 @@ class Gui:
 
 **Organisatie:** Dwengo
         """
-        self.textEditor.insert("1.0", default_text)
+
+    def makeTextEditor(self):
+        self.textEditor = tk.Text(self.mainframe, font=DEFAULT_FONT, undo=True)
+        self.editorDrafts = {
+            NEWS_OBJECT: "",
+            EVENT_OBJECT: self.defaultEventText(),
+        }
+        self.textEditor.insert("1.0", self.editorDrafts[self.currentObject])
         self.textEditor.bind("<Control-z>", lambda event: self.textEditor.edit_undo())
         self.textEditor.bind("<Control-y>", lambda event: self.textEditor.edit_redo())
         self.textEditor.grid(column=5, row=1, rowspan=11, columnspan=5)
@@ -338,6 +368,10 @@ class Gui:
 
     def updateObjectType(self):
         value = self.objectType.get()
+        if value == self.currentObject:
+            return
+
+        self.editorDrafts[self.currentObject] = self.textEditor.get("1.0", "end-1c")
 
         if value == NEWS_OBJECT and self.currentObject != NEWS_OBJECT:
             for i in self.variableComponents:
@@ -354,6 +388,10 @@ class Gui:
             self.variableComponents = []
             self.currentObject = EVENT_OBJECT
             self.setEventComponents()
+
+        self.textEditor.delete("1.0", "end")
+        self.textEditor.insert("1.0", self.editorDrafts[self.currentObject])
+        self.textEditor.edit_reset()
 
     def setNewsComponents(self):
         # Date
@@ -385,7 +423,7 @@ class Gui:
             state="readonly",
             width=6,
         )
-        socialsBox.current(0)
+        socialsBox.set("false")
         socialsBox.grid(column=1, row=6, padx=5, pady=5, columnspan=2, sticky="W")
         socialsBox.bind("<<ComboboxSelected>>", self.removeHighlight)
 
@@ -441,7 +479,7 @@ class Gui:
 
         # End date
         self.formattedEndDate = ""
-        endDateLabel = ttk.Label(self.mainframe, text=f"Date:", font=DEFAULT_FONT)
+        endDateLabel = ttk.Label(self.mainframe, text="End date:", font=DEFAULT_FONT)
         endDateLabel.grid(column=0, row=7, sticky="W", padx=5, pady=5)
         self.variableComponents.append(endDateLabel)
 
@@ -594,7 +632,10 @@ class Gui:
             column=0, row=0, sticky="W", padx=5, pady=5
         )
         filename = ttk.Entry(root, font=DEFAULT_FONT)
+        filename.insert(0, datetime.now().strftime("%Y-%m-%d_"))
+        filename.icursor(tk.END)
         filename.grid(column=1, row=0, sticky="ew", padx=5, pady=5)
+        filename.focus_set()
 
         ttk.Button(
             root,
@@ -625,6 +666,8 @@ class Gui:
         self.calRoot = tk.Tk()
         self.calRoot.geometry("300x300")
         date = datetime.now()
+        if type == END_DATE and self.formattedDate:
+            date = datetime.strptime(self.formattedDate, "%Y-%m-%d")
         self.cal = Calendar(
             self.calRoot,
             selectmode="day",
@@ -645,10 +688,11 @@ class Gui:
             self.month = d.month
             self.year = d.year
             self.formattedDate = d.strftime("%Y-%m-%d")
+            self.updateWhenDate(d)
             ttk.Label(
                 self.mainframe, text=f"{self.formattedDate}", font=DEFAULT_FONT
             ).grid(column=1, row=5, sticky="W", padx=5, pady=5)
-        elif type == END_DATE:
+        if type in (START_DATE, END_DATE):
             self.formattedEndDate = d.strftime("%Y-%m-%d")
             ttk.Label(
                 self.mainframe, text=f"{self.formattedEndDate}", font=DEFAULT_FONT
