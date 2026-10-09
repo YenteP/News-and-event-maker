@@ -8,7 +8,7 @@ import re
 from tkcalendar import Calendar
 from tkinter import ttk, filedialog
 
-VERSION = "v1.0.7"
+VERSION = "v1.0.8"
 RELEASE_URL = "https://api.github.com/repos/YenteP/News-and-event-maker/releases/latest"
 
 DEFAULT_FONT = ("Sabon", 18)
@@ -284,11 +284,11 @@ class Gui:
 
 **Wanneer:** {date_text}
 
-**Locatie:** Het maakatelier 'de wondertuin' van stadsbibliotheek De Krook: Miriam Makebaplein 1, 9000 Gent, verdieping -1
+**Locatie:** maakatelier 'de wondertuin' van stadsbibliotheek De Krook: Miriam Makebaplein 1, 9000 Gent, verdieping -1
 
-**Prijs:** Gratis
+**Prijs:** gratis
 
-**Meebrengen:** Laptop
+**Meebrengen:** laptop
 
 **Organisatie:** Dwengo
         """
